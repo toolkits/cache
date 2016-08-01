@@ -40,6 +40,41 @@ func NewRedisCache(host string, idle, max int, toc, tor, tow, defaultExpiration 
 	return RedisCache{pool, defaultExpiration}
 }
 
+// NewRedisCacheURL connects to a Redis server at the given URL using the Redis
+// URI scheme. URLs should follow the draft IANA specification for the
+// scheme (https://www.iana.org/assignments/uri-schemes/prov/redis).
+func NewRedisCacheURL(rawurl string, idle, max int, toc, tor, tow, defaultExpiration time.Duration) RedisCache {
+	var pool = &redis.Pool{
+		MaxIdle:     idle,
+		MaxActive:   max,
+		IdleTimeout: 240 * time.Second,
+		Dial: func() (redis.Conn, error) {
+			c, err := redis.DialURL(
+				rawurl,
+				redis.DialConnectTimeout(toc),
+				redis.DialReadTimeout(tor),
+				redis.DialReadTimeout(tow),
+			)
+			if err != nil {
+				return nil, err
+			}
+			// check with PING
+			if _, err := c.Do("PING"); err != nil {
+				c.Close()
+				return nil, err
+			}
+			return c, err
+		},
+		// custom connection test method
+		TestOnBorrow: func(c redis.Conn, t time.Time) error {
+			if _, err := c.Do("PING"); err != nil {
+				return err
+			}
+			return nil
+		},
+	}
+	return RedisCache{pool, defaultExpiration}
+}
 func (c RedisCache) Set(key string, value interface{}, expires time.Duration) error {
 	conn := c.pool.Get()
 	defer conn.Close()
