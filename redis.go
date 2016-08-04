@@ -17,8 +17,6 @@ type RedisCache struct {
 // URI scheme. URLs should follow the draft IANA specification for the
 // scheme (https://www.iana.org/assignments/uri-schemes/prov/redis).
 func NewRedisCache(host string, idle, max int, toc, tor, tow, defaultExpiration time.Duration) RedisCache {
-	if strings.HasPrefix(host, "redis://") {
-	}
 	var pool = &redis.Pool{
 		MaxIdle:     idle,
 		MaxActive:   max,
