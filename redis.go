@@ -12,7 +12,7 @@ type RedisCache struct {
 }
 
 // until redigo supports sharding/clustering, only one host will be in hostList
-func NewRedisCache(host string, idle, max int, toc, tor, tow, defaultExpiration time.Duration) RedisCache {
+func NewRedisCache(host string, idle, max int, toc, tor, tow, defaultExpiration time.Duration, pass ...string) RedisCache {
 	var pool = &redis.Pool{
 		MaxIdle:     idle,
 		MaxActive:   max,
@@ -22,11 +22,20 @@ func NewRedisCache(host string, idle, max int, toc, tor, tow, defaultExpiration 
 			if err != nil {
 				return nil, err
 			}
+
 			// check with PING
 			if _, err := c.Do("PING"); err != nil {
 				c.Close()
 				return nil, err
 			}
+
+			if len(pass) > 0 {
+				if _, err := c.Do("AUTH", pass[0]); err != nil {
+					c.Close()
+					return nil, err
+				}
+			}
+
 			return c, err
 		},
 		// custom connection test method
